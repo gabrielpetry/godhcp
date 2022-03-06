@@ -1,4 +1,4 @@
-package dhcpDump
+package dhcpMessage
 
 type DhcpdumpMessage struct {
 	ClientIpAddress  string

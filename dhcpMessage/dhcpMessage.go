@@ -1,18 +1,19 @@
-package dhcpDump
+package dhcpMessage
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
+	Config "go-dhcpdump/config"
 	"go-dhcpdump/database"
 	log "go-dhcpdump/log"
 	"go-dhcpdump/mqttclient"
-	"go-dhcpdump/ping"
 	"regexp"
 	"strings"
 	"sync"
 	"time"
 )
+
+var config = Config.GetInstance()
 
 var db = database.GetInstance()
 var dbCollection = "dhcpclients"
@@ -37,8 +38,6 @@ func (dhcp *DhcpdumpMessage) Parse(message string) {
 
 	entries := strings.Split(message, "\n")
 	metadata := entries[len(entries)-1]
-	log.Info("metadada")
-	log.Info(metadata)
 
 	macRegex := "(ClientHWAddr)=[\\d\\w]{2}:[\\d\\w]{2}:[\\d\\w]{2}:[\\d\\w]{2}:[\\d\\w]{2}:[\\d\\w]{2}"
 	ipRegex := "(RequestIP):\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}"
@@ -53,12 +52,13 @@ func (dhcp *DhcpdumpMessage) Parse(message string) {
 	}
 
 	dhcp.ClientStatus = config.Status.OnState
-
-	log.Info("dhcp")
-	log.Info(dhcp)
 }
 
 func (dhcp *DhcpdumpMessage) Save() error {
+	if dhcp.ClientIpAddress == "" {
+		return fmt.Errorf("ClientIpAddress is empty, %v", dhcp)
+	}
+
 	if err := db.Write(dbCollection, dhcp.ClientHostName, dhcp); err != nil {
 		return err
 	}
@@ -104,41 +104,9 @@ func (dhcp *DhcpdumpMessage) Publish() {
 	}
 }
 
-func (dhcp *DhcpdumpMessage) disconnectDevice() {
+func (dhcp *DhcpdumpMessage) DisconnectDevice() {
 	dhcp.ClientStatus = config.Status.OffState
-	dhcp.Publish()
-}
-
-func (dhcp *DhcpdumpMessage) Ping() (int, error) {
-	if dhcp.ClientIpAddress == "" {
-		return 0, errors.New("No ip Address in client")
-	}
-
-	errorCounter, err := ping.PingUntilFail(dhcp.ClientIpAddress)
-	if err != nil {
-		log.Error("Error pinging device: ", err)
-	}
-
-	if errorCounter > 0 {
-		log.Info("Disconnecting device", dhcp, "errors: ", errorCounter, err)
-		dhcp.disconnectDevice()
-	}
-
-	return errorCounter, nil
-}
-
-func (dhcp *DhcpdumpMessage) SinglePing() error {
-	if dhcp.ClientIpAddress == "" {
-		return errors.New("No ip Address in client")
-	}
-
-	err := ping.SendIcmpTimestamp(dhcp.ClientIpAddress)
-	if err != nil {
-		dhcp.disconnectDevice()
-		return nil
-	}
-
-	return nil
+	dhcp.Save()
 }
 
 func (dhcp *DhcpdumpMessage) GetOnlineDevices() []DhcpdumpMessage {
@@ -152,4 +120,25 @@ func (dhcp *DhcpdumpMessage) GetOnlineDevices() []DhcpdumpMessage {
 	}
 
 	return onlineDevices
+}
+
+func (dhcp *DhcpdumpMessage) FilterDhcpPacket() error {
+	if len(config.Filter.ClientHostName) == len(config.Filter.ClientMacAddress) &&
+		len(config.Filter.ClientHostName) == 0 {
+		return nil
+	}
+
+	for _, v := range config.Filter.ClientHostName {
+		if v == dhcp.ClientHostName {
+			return nil
+		}
+	}
+
+	for _, v := range config.Filter.ClientMacAddress {
+		if v == dhcp.ClientMacAddress {
+			return nil
+		}
+	}
+
+	return fmt.Errorf("Client ain't in the allowed list, %v", dhcp)
 }

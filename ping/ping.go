@@ -5,7 +5,6 @@ package ping
 import (
 	"fmt"
 	Config "go-dhcpdump/config"
-	"go-dhcpdump/log"
 	"net"
 	"os"
 	"time"
@@ -25,33 +24,37 @@ const (
 	//ProtocolIPv6ICMP = 58
 )
 
+var pingQueue = []string{}
+
 var config = Config.GetInstance()
+var messages = make(chan string)
 
-const waitTimeout = time.Second * 2
-const errorLimit = 3
+const waitTimeout = time.Second * 3
 
-func PingUntilFail(target string) (int, error) {
-	errorCounter := 0
-	var err error
+// func PingUntilFail(target string) (int, error) {
+// 	errorCounter := 0
+// 	var err error
 
-	for {
-		if errorCounter >= errorLimit {
-			log.Debug("target stopped responding", target, errorCounter)
-			break
-		}
-		time.Sleep(500 * time.Millisecond)
-		// @TODO: Retry with the Echo request after fails timestamp
-		err = SendIcmpTimestamp(target)
-		// server respond without error
-		if err == nil {
-			errorCounter = 0
-			continue
-		}
-		errorCounter += 1
-	}
+// 	for {
+// 		if errorCounter >= errorLimit {
+// 			log.Debug("target stopped responding", target, errorCounter)
+// 			break
+// 		}
+// 		time.Sleep(2 * time.Second)
+// 		// @TODO: Retry with the Echo request after fails timestamp
+// 		err = SendIcmpTimestamp(target)
+// 		// server respond without error
+// 		if err == nil {
+// 			log.Debug("target responded", target)
+// 			errorCounter = 0
+// 			continue
+// 		}
+// 		log.Debug("target failed responding", target)
+// 		errorCounter += 1
+// 	}
 
-	return errorCounter, err
-}
+// 	return errorCounter, err
+// }
 
 func SendIcmpTimestamp(target string) error {
 	buf := make([]byte, 16)
@@ -83,6 +86,20 @@ func SendIcmpEcho(target string) error {
 	}
 
 	return sendPing(b, target)
+}
+
+func Ping(target string) error {
+	err := SendIcmpEcho(target)
+	if err == nil {
+		return nil
+	}
+
+	err = SendIcmpTimestamp(target)
+	if err == nil {
+		return nil
+	}
+
+	return err
 }
 
 func sendPing(b []byte, target string) error {

@@ -2,6 +2,9 @@ package dhcpDump
 
 import (
 	Config "go-dhcpdump/config"
+	"go-dhcpdump/dhcpMessage"
+	"go-dhcpdump/log"
+	"go-dhcpdump/ping"
 	"time"
 
 	"github.com/google/gopacket"
@@ -27,8 +30,14 @@ func RunDhcpdump() {
 }
 
 func handleDhcpPacket(message gopacket.Packet) {
-	dhcp := DhcpdumpMessage{}
+	dhcp := dhcpMessage.DhcpdumpMessage{}
 	dhcp.Parse(message.String())
+	err := dhcp.FilterDhcpPacket()
+	if err != nil {
+		log.Error("Device is not filtered: ", err)
+		return
+	}
+
 	dhcp.Save()
-	go dhcp.Ping()
+	ping.AddJob(dhcp)
 }
