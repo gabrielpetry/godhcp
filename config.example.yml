@@ -1,0 +1,27 @@
+Status:
+  OnState: "ON" # Home assistant names
+  OffState: "OFF"
+
+Log:
+  Level: ERROR # INFO, ERROR, DEBUG
+  Path: /tmp/godhcpdump.log
+  
+Dhcpdump:
+  Interface: eth0 # your interface
+
+Mqtt:
+  Host: 127.0.0.1
+  Port: 1883
+  User: user
+  Passwd: userpasswd
+
+Database:
+  Path: /etc/go-dhcpdump/db
+
+# Or delete for getting all devices
+Filter:
+  ClientMacAddress:
+    - fc:xx:xx:xx:xx:cb
+  ClientHostName:
+    - game
+    - Tab-S6
