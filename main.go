@@ -1,9 +1,13 @@
 package main
 
 import (
+	"go-dhcpdump/api"
 	Config "go-dhcpdump/config"
-	dhcpDump "go-dhcpdump/dhcpdump"
+	"go-dhcpdump/dhcpDump"
+	"go-dhcpdump/dhcpMessage"
 	"go-dhcpdump/log"
+	"go-dhcpdump/ping"
+	"time"
 )
 
 func main() {
@@ -12,15 +16,25 @@ func main() {
 	config := Config.GetInstance()
 	log.Info("Using config", config)
 
-	// go api.StartApiServer()
+	go api.StartApiServer()
 
-	dhcp := dhcpDump.DhcpdumpMessage{}
-	onlineDevices := dhcp.GetOnlineDevices()
-	func() {
+	go func() {
+		time.Sleep(time.Second * 2)
+		dhcp := dhcpMessage.DhcpdumpMessage{}
+		onlineDevices := dhcp.GetOnlineDevices()
+
+		log.Debug("Pingin old devices: ", onlineDevices)
 		for _, v := range onlineDevices {
-			v.SinglePing()
+			err := ping.Ping(v.ClientIpAddress)
+			if err == nil {
+				v.Save()
+				ping.AddJob(v)
+				continue
+			}
+			dhcp.DisconnectDevice()
 		}
 	}()
+	go dhcpDump.RunDhcpdump()
 
-	dhcpDump.RunDhcpdump()
+	ping.StartWorker()
 }
