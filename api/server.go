@@ -1,7 +1,7 @@
 package api
 
 import (
-	DhcpdumpMessage "go-dhcpdump/dhcpdump"
+	"go-dhcpdump/dhcpMessage"
 	"go-dhcpdump/log"
 	"net/http"
 
@@ -19,7 +19,7 @@ func StartApiServer() {
 	})
 
 	r.GET("/devices", func(c *gin.Context) {
-		device := DhcpdumpMessage.DhcpdumpMessage{}
+		device := dhcpMessage.DhcpdumpMessage{}
 		c.JSON(http.StatusOK, gin.H{
 			"devices": device.GetAll(),
 		})
