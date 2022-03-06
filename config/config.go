@@ -31,6 +31,10 @@ type Config struct {
 		User   string
 		Passwd string
 	}
+	Filter struct {
+		ClientMacAddress []string
+		ClientHostName   []string
+	}
 }
 
 var singleInstance *Config
