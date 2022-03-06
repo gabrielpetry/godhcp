@@ -29,7 +29,7 @@ var pingQueue = []string{}
 var config = Config.GetInstance()
 var messages = make(chan string)
 
-const waitTimeout = time.Second * 3
+const waitTimeout = time.Second * 1
 
 // func PingUntilFail(target string) (int, error) {
 // 	errorCounter := 0
